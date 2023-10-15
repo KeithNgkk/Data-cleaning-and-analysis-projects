@@ -1,0 +1,74 @@
+Source: Amazon Products Sales Dataset 2023, Kaggle Amazon-products.csv  551,497 rows x 10 columns
+Conditions BEFORE cleaning:
+In this dataset, so many field values are wrongly input to wrong columns. For example  column "rating" values exist in column "link", column "main_category" values stick to the column "name" values. 
+The aim of cleaning is to get right values into thg right columns. I targeted 2 columns for cleaning: "main_category","ratings".
+Regex is the key skill to conduct data cleaning 
+
+
+Procedures:
+1. In Excel, use data filtering to inspect the data of "main_category" and "ratings" columns
+
+"main_category" column: 
+Total rows:551,497  valid values:551,497
+i.blank value:0
+ii.numerical values:118 (they must be wrong values, because main_category cannot be numerical. After observation, the true values are stuck to the values of "name" column.The cleaning
+job is to extract them and place them back to "main_category" column.) 
+
+"ratings" column: 
+Total rows:551,497  vaild values: 375,643 
+i. blank values: 175854 (these are missing values)
+ii. values less than or equal to 5: 369,102 (they are correct values because the ratings should range from 1 to 5)
+iii. values greater than 5: 288 (they are wrong values because they are >5. After observation, the true values are stuck to the values in "link" column. The clean job is to extract them then place 
+them into "ratings" column.)
+iv. values are non-numerical: 6253(they are wrong values because they are in characters. After obeservation, 18 true values are stuck to the values in "no.of ratings" column. 
+And the rest of true value is missing/couldn't be found)
+
+2. Data cleaning in pandas on colab
+import pandas as pd 
+amadf=pd.read_csv("/content/Amazon-Products.csv", error_bad_lines=False, engine="python")
+
+3. #check all columns info to see if the reading is finished  
+amadf.info()
+
+COLUMN "main_category" (mixed with character values and numerical values)
+4. #check to no. of unqiue value in "main_categorgy", the result is 155
+amadf.main_category.nunique()  
+
+5. # replace the numerical values with some intermediate values, and check if it is successfully done
+amadf.main_category=amadf.main_category.str.replace(r"\d+\W","kkk")
+amadf.loc[amadf["main_category"]=="kkk"]
+
+6. # extract the stuck values from the values of "name" column, create a new column to store them and the edit them into usable forms
+amadf["suppliment_maincategory"]=amadf.name.str.extract(r"(\?\?\,\w+)")
+amadf["suppliment_maincategory_2"]=amadf["suppliment_maincategory"].str.replace(r"\?\?\,","")
+
+7. #replace the intermediate values retrived in step 5 with the edited values in step 6, pick up one case to check if the replacement is successfully done
+amadf.loc[amadf["main_category"]=="kkk", "main_category"]=amadf["suppliment_maincategory_2"]
+amadf[amadf["main_category"]=="women"]
+
+8. #final check if "main_category" still contain any numerical values
+check=amadf.main_category.str.contains(r"\d+\W")
+check.value_counts()         # it returns "False", 551498(all rows)
+
+COLUMN "ratings"(mixed with url values, numerical values greater than 5 and blank)
+9. # convert the values into string for string functions and create a new to column to store 
+amadf["ratings"]=amadf.ratings.astype("str")
+amadf["float_ratings"]=amadf["ratings"].str.extract(r"(^\d+)")
+
+10. # convert the datatype of the new columns in step 9 into float and check
+amadf["float_ratings"]=amadf["float_ratings"].astype("float")
+amadf.float_ratings.info()
+
+11. # replace the values great than 5 with the true values in column "link"(because the true values are wrongly placed there) and check
+amadf.loc[amadf["float_ratings"]>5,"float_ratings"]=amadf["link"]
+amadf.float_ratings.unique()
+#it should show no numerical values larger than 5
+
+12. compare the result before and after 
+original column "main_category" in csv file vs the modified column amadf["main_Category"] 
+amadf["ratings"] vs amadf["float_ratings"]
+
+Conclusion
+Column "main_category" values are completely recovered
+Column "ratings" values, originally from the csv file, 33% of them are blank. The cleaning recovered 288 values and it counts for 0.078% of final valid values 
+
